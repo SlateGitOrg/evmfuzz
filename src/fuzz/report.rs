@@ -53,8 +53,11 @@ pub fn render(r: &CampaignReport) -> String {
             let _ = writeln!(s, "      {}. {}  => {} (gas {})", i + 1, t.call, t.outcome, t.gas_used);
         }
     }
+    if !r.holding.is_empty() {
+        s.push('\n');
+    }
     for h in &r.holding {
-        let _ = writeln!(s, "\n  HOLDS   {h}  (not falsified within budget)");
+        let _ = writeln!(s, "  HOLDS   {h}  (not falsified within budget)");
     }
     let pct = if r.branches_total > 0 { 100.0 * r.branches_covered as f64 / r.branches_total as f64 } else { 0.0 };
     let _ = writeln!(

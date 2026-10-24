@@ -6,8 +6,8 @@ set -uo pipefail
 BIN="${1:?usage: scripts/demo.sh path/to/evmfuzz}"
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
-OUT="$(mktemp -d)"
-trap 'rm -rf "$OUT"' EXIT
+OUT="out/demo"   # git-ignored
+rm -rf "$OUT" && mkdir -p "$OUT"
 fail=0
 
 banner() { printf '\n==== %s ====\n' "$1"; }
@@ -30,7 +30,7 @@ code=$?
 [[ $code == 0 ]] || { echo "!! control reported a violation (exit $code)"; fail=1; }
 
 banner "4. replaying the saved staged reproducer"
-cat "$OUT/staged-payout-capped.json"
+cat "$OUT/staged-payout-capped.json"; echo
 "$BIN" replay fixtures/staged/campaign.toml "$OUT/staged-payout-capped.json" || fail=1
 
 banner "5. raw interpreter: run and trace 2+3"
