@@ -4,9 +4,7 @@
 //! Each measurement is repeated and the median is reported. Numbers depend
 //! on the machine; the README states where its numbers came from.
 
-use crate::evm::{
-    Account, BlockEnv, CallKind, CallMessage, Evm, FrameResult, NoopTracer, Status, Tracer, WorldState,
-};
+use crate::evm::{Account, BlockEnv, CallKind, CallMessage, Evm, FrameResult, NoopTracer, Status, Tracer, WorldState};
 use crate::fuzz::campaign::Campaign;
 use crate::fuzz::exec::{Checks, Executor};
 use crate::fuzz::mutate::Generator;
@@ -88,7 +86,10 @@ fn workloads(scale: u32) -> Vec<(&'static str, Vec<u8>)> {
     call_body.extend_from_slice(&[0x5a, 0xfa, 0x50]); // GAS STATICCALL POP
     vec![
         // DUP1 PUSH1 3 MUL PUSH1 7 ADD PUSH1 5 MOD POP
-        ("arithmetic", counted_loop(200_000 * scale, &[0x80, 0x60, 0x03, 0x02, 0x60, 0x07, 0x01, 0x60, 0x05, 0x06, 0x50])),
+        (
+            "arithmetic",
+            counted_loop(200_000 * scale, &[0x80, 0x60, 0x03, 0x02, 0x60, 0x07, 0x01, 0x60, 0x05, 0x06, 0x50]),
+        ),
         // DUP1 PUSH0 MSTORE PUSH1 64 PUSH0 KECCAK256 POP
         ("keccak256", counted_loop(50_000 * scale, &[0x80, 0x5f, 0x52, 0x60, 0x40, 0x5f, 0x20, 0x50])),
         // DUP1 DUP1 PUSH1 16 SWAP1 MOD SSTORE  DUP1 PUSH1 16 SWAP1 MOD SLOAD POP
@@ -173,7 +174,7 @@ pub fn fuzzing(c: &Campaign, tx_budget: u64, reps: usize) -> Vec<FuzzBench> {
                     // Violations are ignored here: we only measure execution speed.
                     let out = exec.run(&seq, Checks::Active { invariants: flags, assertions: true }, true, false);
                     gen.learn(exec.cmp_values.drain(..));
-        gen.learn_i2s(exec.i2s.drain(..));
+                    gen.learn_i2s(exec.i2s.drain(..));
                     tx += out.executed as u64;
                     sequences += 1;
                 }

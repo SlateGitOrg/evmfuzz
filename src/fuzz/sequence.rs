@@ -32,13 +32,8 @@ impl Call {
     pub fn display(&self, c: &Campaign) -> String {
         let t = &c.targets[self.target];
         let args: Vec<String> = self.args.iter().map(|a| display_value(a, c)).collect();
-        let mut s = format!(
-            "actor{} -> {}.{}({})",
-            self.sender,
-            c.contracts[t.contract].name,
-            t.func.name,
-            args.join(", ")
-        );
+        let mut s =
+            format!("actor{} -> {}.{}({})", self.sender, c.contracts[t.contract].name, t.func.name, args.join(", "));
         if !self.value.is_zero() {
             s.push_str(&format!(" {{value: {}}}", self.value));
         }
@@ -135,7 +130,8 @@ impl Reproducer {
                     .and_then(|n| n.parse::<usize>().ok())
                     .filter(|&n| n < c.names.actors.len())
                     .ok_or_else(|| ctx(format!("unknown sender `{}`", r.sender)))?;
-                let target = c.find_target(&r.function).ok_or_else(|| ctx(format!("unknown function `{}`", r.function)))?;
+                let target =
+                    c.find_target(&r.function).ok_or_else(|| ctx(format!("unknown function `{}`", r.function)))?;
                 let inputs = &c.targets[target].func.inputs;
                 if inputs.len() != r.args.len() {
                     return Err(ctx(format!("expected {} args, got {}", inputs.len(), r.args.len())));

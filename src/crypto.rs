@@ -31,9 +31,7 @@ const ROUND_CONSTANTS: [u64; 24] = [
 ];
 
 /// Rotation offsets indexed by lane `x + 5 * y`.
-const RHO: [u32; 25] = [
-    0, 1, 62, 28, 27, 36, 44, 6, 55, 20, 3, 10, 43, 25, 39, 41, 45, 15, 21, 8, 18, 2, 61, 56, 14,
-];
+const RHO: [u32; 25] = [0, 1, 62, 28, 27, 36, 44, 6, 55, 20, 3, 10, 43, 25, 39, 41, 45, 15, 21, 8, 18, 2, 61, 56, 14];
 
 /// The Keccak-f[1600] permutation.
 fn keccak_f(a: &mut [u64; 25]) {
@@ -111,8 +109,8 @@ pub fn ripemd160(data: &[u8]) -> [u8; 20] {
 
 /// `keccak256("")`, the code hash of accounts without code.
 pub const EMPTY_CODE_HASH: B256 = B256([
-    0xc5, 0xd2, 0x46, 0x01, 0x86, 0xf7, 0x23, 0x3c, 0x92, 0x7e, 0x7d, 0xb2, 0xdc, 0xc7, 0x03, 0xc0, 0xe5,
-    0x00, 0xb6, 0x53, 0xca, 0x82, 0x27, 0x3b, 0x7b, 0xfa, 0xd8, 0x04, 0x5d, 0x85, 0xa4, 0x70,
+    0xc5, 0xd2, 0x46, 0x01, 0x86, 0xf7, 0x23, 0x3c, 0x92, 0x7e, 0x7d, 0xb2, 0xdc, 0xc7, 0x03, 0xc0, 0xe5, 0x00, 0xb6,
+    0x53, 0xca, 0x82, 0x27, 0x3b, 0x7b, 0xfa, 0xd8, 0x04, 0x5d, 0x85, 0xa4, 0x70,
 ]);
 
 #[cfg(test)]
@@ -122,10 +120,7 @@ mod tests {
     #[test]
     fn keccak_known_vectors() {
         assert_eq!(keccak256(b""), EMPTY_CODE_HASH);
-        assert_eq!(
-            keccak256(b"abc").to_string(),
-            "0x4e03657aea45a94fc7d47ba826c8d667c0d1e6e33a64a036ec44f58fa12d6c45"
-        );
+        assert_eq!(keccak256(b"abc").to_string(), "0x4e03657aea45a94fc7d47ba826c8d667c0d1e6e33a64a036ec44f58fa12d6c45");
         // Function selector of transfer(address,uint256).
         assert_eq!(&keccak256(b"transfer(address,uint256)").0[..4], &[0xa9, 0x05, 0x9c, 0xbb]);
         // Multi-block input (200 bytes crosses the 136-byte rate).

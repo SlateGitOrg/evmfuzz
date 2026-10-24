@@ -6,8 +6,8 @@
 //! that reach an unimplemented precompile are reported as unsupported rather
 //! than passed or failed.
 
-use crate::evm::{Account, BlockEnv, Evm, GasPrice, Transaction, WorldState};
 use crate::evm::state::logs_hash;
+use crate::evm::{Account, BlockEnv, Evm, GasPrice, Transaction, WorldState};
 use crate::types::{decode_hex, Address, B256};
 use crate::u256::U256;
 use serde::Deserialize;

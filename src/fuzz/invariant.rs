@@ -290,10 +290,10 @@ fn lex(src: &str) -> Result<Vec<(usize, Tok)>, InvariantError> {
             }
             out.push((start, Tok::Ident(src[start..i].to_string())));
         } else {
-            let p = PUNCT
-                .iter()
-                .find(|p| src[i..].starts_with(**p))
-                .ok_or_else(|| InvariantError::Syntax { pos: i, msg: format!("unexpected character `{}`", c as char) })?;
+            let p = PUNCT.iter().find(|p| src[i..].starts_with(**p)).ok_or_else(|| InvariantError::Syntax {
+                pos: i,
+                msg: format!("unexpected character `{}`", c as char),
+            })?;
             out.push((i, Tok::Punct(p)));
             i += p.len();
         }
@@ -841,10 +841,25 @@ mod tests {
 
     #[test]
     fn syntax_errors_and_name_checks() {
-        for bad in ["", "1 +", "(1", "Token.", "Token.f(", "sum(a of actors, 1)", "sum(a in people, 1)", "foo(1)", "1 $ 2", "balance(1, 2)", "1 2", "sum(1 in actors, 1)", "Token.f(1 2)"] {
+        for bad in [
+            "",
+            "1 +",
+            "(1",
+            "Token.",
+            "Token.f(",
+            "sum(a of actors, 1)",
+            "sum(a in people, 1)",
+            "foo(1)",
+            "1 $ 2",
+            "balance(1, 2)",
+            "1 2",
+            "sum(1 in actors, 1)",
+            "Token.f(1 2)",
+        ] {
             assert!(Expr::parse(bad).is_err(), "{bad:?}");
         }
-        assert!(Expr::parse("99999999999999999999999999999999999999999999999999999999999999999999999999999999 ether").is_err());
+        assert!(Expr::parse("99999999999999999999999999999999999999999999999999999999999999999999999999999999 ether")
+            .is_err());
         let e = Expr::parse("sum(a in actors, Token.balanceOf(a)) == Tok.x()").unwrap();
         let known = |n: &str| n == "Token";
         assert_eq!(e.check_names(&known), Err(InvariantError::UnknownName("Tok".into())));
@@ -853,10 +868,16 @@ mod tests {
         assert!(Expr::parse("1 == 2").unwrap().explain(&mut fake(0, 0, 0)).is_some());
         let all = Expr::parse("all(a in actors, Token.balanceOf(a) <= 50)").unwrap();
         let why = all.explain(&mut fake(10, 70, 80)).unwrap();
-        assert_eq!(why, "fails for a = 0x0000000000000000000000000000000000000002: lhs = 70, rhs = 50 (expected lhs <= rhs)");
+        assert_eq!(
+            why,
+            "fails for a = 0x0000000000000000000000000000000000000002: lhs = 70, rhs = 50 (expected lhs <= rhs)"
+        );
         assert!(all.explain(&mut fake(10, 20, 30)).is_none());
         let all_bool = Expr::parse("all(a in actors, false)").unwrap();
-        assert_eq!(all_bool.explain(&mut fake(0, 0, 0)).unwrap(), "fails for a = 0x0000000000000000000000000000000000000001");
+        assert_eq!(
+            all_bool.explain(&mut fake(0, 0, 0)).unwrap(),
+            "fails for a = 0x0000000000000000000000000000000000000001"
+        );
         assert!(Expr::parse("true").unwrap().explain(&mut fake(0, 0, 0)).is_none());
     }
 

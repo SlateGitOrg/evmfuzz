@@ -77,11 +77,12 @@ mod tests {
 
     #[test]
     fn deterministic_and_seed_sensitive() {
-        let a: Vec<u64> = (0..4).map({
-            let mut r = Rng::new(7);
-            move |_| r.next_u64()
-        })
-        .collect();
+        let a: Vec<u64> = (0..4)
+            .map({
+                let mut r = Rng::new(7);
+                move |_| r.next_u64()
+            })
+            .collect();
         let mut r = Rng::new(7);
         let b: Vec<u64> = (0..4).map(|_| r.next_u64()).collect();
         assert_eq!(a, b);

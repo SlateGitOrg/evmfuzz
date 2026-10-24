@@ -632,11 +632,7 @@ fn knuth_div_rem(u: &[u64], v: &[u64]) -> (Vec<u64>, Vec<u64>) {
     }
     let mut r = vec![0u64; n];
     for i in 0..n {
-        r[i] = if s == 0 {
-            un[i]
-        } else {
-            (un[i] >> s) | (un[i + 1] << (64 - s))
-        };
+        r[i] = if s == 0 { un[i] } else { (un[i] >> s) | (un[i + 1] << (64 - s)) };
     }
     (q, r)
 }
@@ -786,13 +782,18 @@ mod tests {
     fn parse_and_display_roundtrip() {
         let v = h("0x1234567890abcdef1234567890abcdef1234567890abcdef");
         assert_eq!(format!("{v:#x}"), "0x1234567890abcdef1234567890abcdef1234567890abcdef");
-        assert_eq!(U256::MAX.to_string(), "115792089237316195423570985008687907853269984665640564039457584007913129639935");
+        assert_eq!(
+            U256::MAX.to_string(),
+            "115792089237316195423570985008687907853269984665640564039457584007913129639935"
+        );
         assert_eq!(h("12345678901234567890123").to_string(), "12345678901234567890123");
         assert_eq!(U256::ZERO.to_hex(), "0x0");
         assert_eq!(h("0x"), U256::ZERO);
         assert!(U256::from_dec("").is_err());
         assert!(U256::from_hex(&"f".repeat(65)).is_err());
-        assert!(U256::from_dec("1157920892373161954235709850086879078532699846656405640394575840079131296399360").is_err());
+        assert!(
+            U256::from_dec("1157920892373161954235709850086879078532699846656405640394575840079131296399360").is_err()
+        );
         assert!(U256::from_hex("xyz").is_err());
     }
 

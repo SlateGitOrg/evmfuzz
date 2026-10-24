@@ -102,7 +102,12 @@ impl Shrinker<'_, '_> {
     /// `build(seq, x)` returns `seq` with the quantity set to `x`, or `None`
     /// if the quantity does not occur in `seq`. Candidates are always built
     /// from the sequence as it was on entry; the best failing one is adopted.
-    fn min_value(&mut self, seq: &mut Sequence, build: &dyn Fn(&Sequence, U256) -> Option<Sequence>, cur: U256) -> bool {
+    fn min_value(
+        &mut self,
+        seq: &mut Sequence,
+        build: &dyn Fn(&Sequence, U256) -> Option<Sequence>,
+        cur: U256,
+    ) -> bool {
         let original = seq.clone();
         for small in [U256::ZERO, U256::ONE] {
             if small < cur {
@@ -160,6 +165,22 @@ impl Shrinker<'_, '_> {
             }
         }
         let mut changed = false;
+        // Senders that must stay equal (e.g. the opener of a state machine) move together.
+        let mut senders: Vec<usize> = seq.iter().map(|c| c.sender).collect();
+        senders.sort_unstable();
+        senders.dedup();
+        for s in senders.into_iter().filter(|&s| s > 0) {
+            for lower in 0..s {
+                let cand: Sequence = seq
+                    .iter()
+                    .map(|c| Call { sender: if c.sender == s { lower } else { c.sender }, ..c.clone() })
+                    .collect();
+                if self.try_seq(seq, &cand) {
+                    changed = true;
+                    break;
+                }
+            }
+        }
         for (v, n) in counts {
             if n < 2 || v <= U256::ONE {
                 continue;

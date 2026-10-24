@@ -322,7 +322,10 @@ mod tests {
         let r = evm.transact(&Transaction::create(sender, bad, U256::ZERO, 200_000)).unwrap();
         assert_eq!(r.status, Status::Halt(Halt::InvalidCodePrefix));
         let huge = vec![0u8; gas::MAX_INITCODE_SIZE + 1];
-        assert_eq!(evm.transact(&Transaction::create(sender, huge, U256::ZERO, 29_000_000)), Err(TxError::InitcodeTooLarge));
+        assert_eq!(
+            evm.transact(&Transaction::create(sender, huge, U256::ZERO, 29_000_000)),
+            Err(TxError::InitcodeTooLarge)
+        );
     }
 
     #[test]

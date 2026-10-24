@@ -134,7 +134,7 @@ impl<'c> Generator<'c> {
                     if single_word(ty) {
                         map.push(Some(a));
                     } else {
-                        map.extend(std::iter::repeat(None).take(head_words(ty)));
+                        map.extend(std::iter::repeat_n(None, head_words(ty)));
                     }
                 }
                 map
@@ -386,7 +386,7 @@ impl<'c> Generator<'c> {
             }
             let i = self.rng.below(s.len());
             match self.rng.below(12) {
-                0 | 1 | 2 => {
+                0..=2 => {
                     let t = &self.campaign.targets[s[i].target];
                     if t.func.inputs.is_empty() {
                         s[i] = self.call();

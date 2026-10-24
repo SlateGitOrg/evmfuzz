@@ -263,7 +263,8 @@ fn cmd_fuzz(path: &Path, opts: &FuzzOpts, json: Option<PathBuf>, save_dir: Optio
     });
     print!("{}", report::render(&report));
     if let Some(p) = json {
-        std::fs::write(&p, serde_json::to_string_pretty(&report)?).with_context(|| format!("writing {}", p.display()))?;
+        std::fs::write(&p, serde_json::to_string_pretty(&report)?)
+            .with_context(|| format!("writing {}", p.display()))?;
     }
     if let Some(dir) = save_dir {
         std::fs::create_dir_all(&dir).with_context(|| format!("creating {}", dir.display()))?;
@@ -300,7 +301,14 @@ fn cmd_replay(campaign: &Path, repro: &Path) -> Result<ExitCode> {
     })
 }
 
-fn cmd_eval(campaigns: &[PathBuf], seeds: &str, modes: &str, max_tx: u64, jobs: usize, json: Option<PathBuf>) -> Result<()> {
+fn cmd_eval(
+    campaigns: &[PathBuf],
+    seeds: &str,
+    modes: &str,
+    max_tx: u64,
+    jobs: usize,
+    json: Option<PathBuf>,
+) -> Result<()> {
     let seeds = parse_seeds(seeds)?;
     let modes = modes
         .split(',')
@@ -309,13 +317,19 @@ fn cmd_eval(campaigns: &[PathBuf], seeds: &str, modes: &str, max_tx: u64, jobs: 
     let loaded = campaigns.iter().map(|p| load_campaign(p)).collect::<Result<Vec<_>>>()?;
     let base = FuzzConfig { max_tx, ..FuzzConfig::default() };
     let n = loaded.len() * modes.len() * seeds.len();
-    eprintln!("running {n} campaigns ({} seeds x {} modes x {} fixtures) on {jobs} threads", seeds.len(), modes.len(), loaded.len());
+    eprintln!(
+        "running {n} campaigns ({} seeds x {} modes x {} fixtures) on {jobs} threads",
+        seeds.len(),
+        modes.len(),
+        loaded.len()
+    );
     let t = std::time::Instant::now();
     let results = eval::run_matrix(&loaded, &modes, &seeds, &base, jobs);
     eprintln!("done in {:.1}s", t.elapsed().as_secs_f64());
     print!("{}", eval::render_markdown(&eval::summarize(&results)));
     if let Some(p) = json {
-        std::fs::write(&p, serde_json::to_string_pretty(&results)?).with_context(|| format!("writing {}", p.display()))?;
+        std::fs::write(&p, serde_json::to_string_pretty(&results)?)
+            .with_context(|| format!("writing {}", p.display()))?;
     }
     Ok(())
 }
@@ -328,7 +342,10 @@ fn cmd_bench(campaigns: &[PathBuf], scale: u32, reps: usize, fuzz_tx: u64) -> Re
         (interp, fz)
     });
     println!("interpreter (median of {reps} runs)");
-    println!("{:<12} {:>14} {:>14} {:>10} {:>10} {:>10}", "workload", "gas", "instructions", "ms", "Mgas/s", "M instr/s");
+    println!(
+        "{:<12} {:>14} {:>14} {:>10} {:>10} {:>10}",
+        "workload", "gas", "instructions", "ms", "Mgas/s", "M instr/s"
+    );
     for b in &interp {
         println!(
             "{:<12} {:>14} {:>14} {:>10.2} {:>10.1} {:>10.1}",

@@ -69,7 +69,13 @@ pub struct RunResult {
 }
 
 /// Runs every combination on `jobs` threads.
-pub fn run_matrix(campaigns: &[Campaign], modes: &[Mode], seeds: &[u64], base: &FuzzConfig, jobs: usize) -> Vec<RunResult> {
+pub fn run_matrix(
+    campaigns: &[Campaign],
+    modes: &[Mode],
+    seeds: &[u64],
+    base: &FuzzConfig,
+    jobs: usize,
+) -> Vec<RunResult> {
     let mut work = Vec::new();
     for c in 0..campaigns.len() {
         for &m in modes {
@@ -160,7 +166,8 @@ pub fn summarize(results: &[RunResult]) -> Vec<SummaryRow> {
             }
         }
         for o in oracles {
-            let hits: Vec<&(String, u64, usize)> = runs.iter().flat_map(|r| r.broken.iter()).filter(|b| b.0 == o).collect();
+            let hits: Vec<&(String, u64, usize)> =
+                runs.iter().flat_map(|r| r.broken.iter()).filter(|b| b.0 == o).collect();
             let mut txs: Vec<u64> = hits.iter().map(|b| b.1).collect();
             let mut lens: Vec<usize> = hits.iter().map(|b| b.2).collect();
             rows.push(SummaryRow {

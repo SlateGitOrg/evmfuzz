@@ -418,10 +418,8 @@ impl Campaign {
                 reason: format!("bytecode is not hex: {e}"),
             })?;
             let abi = match &c.abi {
-                Some(p) => {
-                    ContractAbi::from_json(&read(&base.join(p))?)
-                        .map_err(|source| CampaignError::Abi { context: c.name.clone(), source })?
-                }
+                Some(p) => ContractAbi::from_json(&read(&base.join(p))?)
+                    .map_err(|source| CampaignError::Abi { context: c.name.clone(), source })?,
                 None => ContractAbi::default(),
             };
             if c.args.len() != abi.constructor.len() {
@@ -446,10 +444,9 @@ impl Campaign {
             );
             let deployer_name = c.deployer.as_deref().unwrap_or("actor0");
             let deployer = names.actors.get(
-                deployer_name
-                    .strip_prefix("actor")
-                    .and_then(|n| n.parse::<usize>().ok())
-                    .ok_or_else(|| CampaignError::Invalid(format!("deployer must be an actor, got `{deployer_name}`")))?,
+                deployer_name.strip_prefix("actor").and_then(|n| n.parse::<usize>().ok()).ok_or_else(|| {
+                    CampaignError::Invalid(format!("deployer must be an actor, got `{deployer_name}`"))
+                })?,
             );
             let deployer = *deployer
                 .ok_or_else(|| CampaignError::Invalid(format!("deployer `{deployer_name}` does not exist")))?;
@@ -483,18 +480,19 @@ impl Campaign {
                     .map_err(|source| CampaignError::Abi { context: c.name.clone(), source })?,
                 None => abi.mutating.clone(),
             };
-            warnings.extend(abi.skipped.iter().map(|s| format!("{}: skipped {s} (unsupported parameter type)", c.name)));
+            warnings
+                .extend(abi.skipped.iter().map(|s| format!("{}: skipped {s} (unsupported parameter type)", c.name)));
             for ex in &c.exclude {
-                let f =
-                    Function::parse(ex).map_err(|source| CampaignError::Abi { context: c.name.clone(), source })?;
+                let f = Function::parse(ex).map_err(|source| CampaignError::Abi { context: c.name.clone(), source })?;
                 if !funcs.iter().any(|g| g.signature() == f.signature()) {
                     return Err(CampaignError::Invalid(format!("{}: excluded function {ex} is not a target", c.name)));
                 }
             }
             for func in funcs {
-                let excluded = c.exclude.iter().any(|ex| {
-                    Function::parse(ex).map(|f| f.signature() == func.signature()).unwrap_or(false)
-                });
+                let excluded = c
+                    .exclude
+                    .iter()
+                    .any(|ex| Function::parse(ex).map(|f| f.signature() == func.signature()).unwrap_or(false));
                 if !excluded {
                     targets.push(Target { contract: idx, func });
                 }

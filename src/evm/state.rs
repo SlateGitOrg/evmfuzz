@@ -35,7 +35,13 @@ pub struct Account {
 
 impl Default for Account {
     fn default() -> Self {
-        Account { nonce: 0, balance: U256::ZERO, code: Arc::from(Vec::new()), code_hash: EMPTY_CODE_HASH, storage: FxHashMap::default() }
+        Account {
+            nonce: 0,
+            balance: U256::ZERO,
+            code: Arc::from(Vec::new()),
+            code_hash: EMPTY_CODE_HASH,
+            storage: FxHashMap::default(),
+        }
     }
 }
 
@@ -287,8 +293,8 @@ impl JournaledState {
 
     /// Ensures the account exists (creating an empty one) and returns it.
     fn ensure(&mut self, a: Address) -> &mut Account {
-        if !self.state.accounts.contains_key(&a) {
-            self.state.accounts.insert(a, Account::default());
+        if let std::collections::hash_map::Entry::Vacant(slot) = self.state.accounts.entry(a) {
+            slot.insert(Account::default());
             self.journal.push(Entry::Created(a));
         }
         self.touch(a);

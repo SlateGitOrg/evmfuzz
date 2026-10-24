@@ -37,7 +37,8 @@ fn linear(base: u64, per_word: u64, input: &[u8]) -> u64 {
     base + per_word * words(input.len() as u64)
 }
 
-const SECP256K1_N: U256 = U256([0xBFD2_5E8C_D036_4141, 0xBAAE_DCE6_AF48_A03B, 0xFFFF_FFFF_FFFF_FFFE, 0xFFFF_FFFF_FFFF_FFFF]);
+const SECP256K1_N: U256 =
+    U256([0xBFD2_5E8C_D036_4141, 0xBAAE_DCE6_AF48_A03B, 0xFFFF_FFFF_FFFF_FFFE, 0xFFFF_FFFF_FFFF_FFFF]);
 
 fn padded_word(input: &[u8], i: usize) -> U256 {
     let mut buf = [0u8; 32];

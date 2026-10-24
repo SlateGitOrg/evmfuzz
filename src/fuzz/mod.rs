@@ -208,7 +208,14 @@ pub fn fuzz(c: &Campaign, cfg: &FuzzConfig, progress: &mut dyn FnMut(&Progress))
             let replay = exec.run(&shrunk.0, Checks::Only(v.oracle), false, true);
             shrink_time += t0.elapsed();
             let name = oracle_name(c, v.oracle);
-            log::info!("{}: `{}` broken after {} tx; shrunk {} -> {} calls", c.name, name, tx, failing.len(), shrunk.0.len());
+            log::info!(
+                "{}: `{}` broken after {} tx; shrunk {} -> {} calls",
+                c.name,
+                name,
+                tx,
+                failing.len(),
+                shrunk.0.len()
+            );
             findings.push(Finding {
                 oracle: name.clone(),
                 property: property_text(c, v.oracle),

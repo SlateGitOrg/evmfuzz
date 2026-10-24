@@ -39,10 +39,7 @@ pub fn decode_hex(s: &str) -> Result<Vec<u8>, HexError> {
             _ => Err(HexError::InvalidChar(c as char)),
         }
     };
-    s.as_bytes()
-        .chunks_exact(2)
-        .map(|p| Ok((nib(p[0])? << 4) | nib(p[1])?))
-        .collect()
+    s.as_bytes().chunks_exact(2).map(|p| Ok((nib(p[0])? << 4) | nib(p[1])?)).collect()
 }
 
 /// Encodes bytes as lower-case hex with a `0x` prefix.
@@ -148,7 +145,8 @@ impl FromStr for B256 {
     type Err = HexError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let v = decode_hex(s)?;
-        let arr: [u8; 32] = v.as_slice().try_into().map_err(|_| HexError::WrongLength { expected: 32, got: v.len() })?;
+        let arr: [u8; 32] =
+            v.as_slice().try_into().map_err(|_| HexError::WrongLength { expected: 32, got: v.len() })?;
         Ok(B256(arr))
     }
 }

@@ -293,10 +293,8 @@ pub fn parse_value(ty: &AbiType, text: &str, names: &dyn Fn(&str) -> Option<Addr
         }
         AbiType::Array(elem) | AbiType::FixedArray(elem, _) => {
             let inner = text.strip_prefix('[').and_then(|t| t.strip_suffix(']')).ok_or_else(bad)?;
-            let items = split_top_level(inner)
-                .iter()
-                .map(|t| parse_value(elem, t, names))
-                .collect::<Result<Vec<_>, _>>()?;
+            let items =
+                split_top_level(inner).iter().map(|t| parse_value(elem, t, names)).collect::<Result<Vec<_>, _>>()?;
             if let AbiType::FixedArray(_, k) = ty {
                 if items.len() != *k {
                     return Err(bad());
@@ -567,7 +565,8 @@ mod tests {
 
     #[test]
     fn type_parsing_round_trips() {
-        for s in ["uint256", "uint8", "int24", "address", "bool", "bytes32", "bytes", "string", "uint256[]", "address[3]"]
+        for s in
+            ["uint256", "uint8", "int24", "address", "bool", "bytes32", "bytes", "string", "uint256[]", "address[3]"]
         {
             assert_eq!(AbiType::parse(s).unwrap().to_string(), s);
         }
