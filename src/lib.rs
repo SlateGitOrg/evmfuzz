@@ -18,6 +18,7 @@
 pub mod abi;
 pub mod crypto;
 pub mod evm;
+pub mod fuzz;
 pub mod fxhash;
 pub mod rlp;
 pub mod rng;
