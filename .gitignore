@@ -4,3 +4,4 @@
 /out/
 *.profraw
 lcov.info
+.tools/

@@ -1,0 +1,115 @@
+[
+ {
+  "inputs": [],
+  "stateMutability": "nonpayable",
+  "type": "constructor"
+ },
+ {
+  "inputs": [
+   {
+    "internalType": "uint64",
+    "name": "word",
+    "type": "uint64"
+   }
+  ],
+  "name": "amountOf",
+  "outputs": [
+   {
+    "internalType": "uint32",
+    "name": "",
+    "type": "uint32"
+   }
+  ],
+  "stateMutability": "pure",
+  "type": "function"
+ },
+ {
+  "inputs": [
+   {
+    "internalType": "uint32",
+    "name": "id",
+    "type": "uint32"
+   }
+  ],
+  "name": "configure",
+  "outputs": [],
+  "stateMutability": "nonpayable",
+  "type": "function"
+ },
+ {
+  "inputs": [],
+  "name": "configured",
+  "outputs": [
+   {
+    "internalType": "bool",
+    "name": "",
+    "type": "bool"
+   }
+  ],
+  "stateMutability": "view",
+  "type": "function"
+ },
+ {
+  "inputs": [],
+  "name": "owner",
+  "outputs": [
+   {
+    "internalType": "address",
+    "name": "",
+    "type": "address"
+   }
+  ],
+  "stateMutability": "view",
+  "type": "function"
+ },
+ {
+  "inputs": [
+   {
+    "internalType": "uint32",
+    "name": "",
+    "type": "uint32"
+   }
+  ],
+  "name": "packed",
+  "outputs": [
+   {
+    "internalType": "uint64",
+    "name": "",
+    "type": "uint64"
+   }
+  ],
+  "stateMutability": "view",
+  "type": "function"
+ },
+ {
+  "inputs": [],
+  "name": "specialId",
+  "outputs": [
+   {
+    "internalType": "uint32",
+    "name": "",
+    "type": "uint32"
+   }
+  ],
+  "stateMutability": "view",
+  "type": "function"
+ },
+ {
+  "inputs": [
+   {
+    "internalType": "uint32",
+    "name": "id",
+    "type": "uint32"
+   },
+   {
+    "internalType": "uint32",
+    "name": "amount",
+    "type": "uint32"
+   }
+  ],
+  "name": "store",
+  "outputs": [],
+  "stateMutability": "nonpayable",
+  "type": "function"
+ }
+]
