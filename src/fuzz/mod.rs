@@ -190,6 +190,7 @@ pub fn fuzz(c: &Campaign, cfg: &FuzzConfig, progress: &mut dyn FnMut(&Progress))
         tx += out.executed as u64;
         sequences += 1;
         gen.learn(exec.cmp_values.drain(..));
+        gen.learn_i2s(exec.i2s.drain(..));
         if cfg.coverage {
             if let Some(i) = out.last_new_coverage {
                 corpus.push(seq[..=i].to_vec());

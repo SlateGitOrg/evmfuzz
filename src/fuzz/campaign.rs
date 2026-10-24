@@ -27,7 +27,7 @@ use super::exec::ViewCtx;
 use super::invariant::{AddressSet, Expr, InvariantError};
 use super::FuzzConfig;
 use crate::abi::{decode_revert, encode_params, parse_value, AbiError, ContractAbi, Function};
-use crate::evm::opcode::{immediate_len, JUMPI};
+use crate::evm::opcode::{immediate_len, JUMP, JUMPI};
 use crate::evm::{Account, BlockEnv, Evm, Transaction, WorldState};
 use crate::fxhash::FxHashSet;
 use crate::types::{decode_hex, Address};
@@ -351,7 +351,8 @@ pub fn strip_metadata(code: &[u8]) -> &[u8] {
     code
 }
 
-/// Counts `JUMPI`s and collects PUSH constants (2 bytes or wider) in `code`.
+/// Counts `JUMPI`s and collects PUSH constants (2 bytes or wider, excluding
+/// jump targets, i.e. pushes immediately followed by `JUMP`/`JUMPI`).
 fn scan_code(code: &[u8], constants: &mut FxHashSet<U256>) -> usize {
     let code = strip_metadata(code);
     let mut jumpis = 0;
@@ -362,7 +363,8 @@ fn scan_code(code: &[u8], constants: &mut FxHashSet<U256>) -> usize {
         if op == JUMPI {
             jumpis += 1;
         }
-        if n >= 2 && pc + 1 + n <= code.len() {
+        let next = code.get(pc + 1 + n).copied();
+        if n >= 2 && pc + 1 + n <= code.len() && !matches!(next, Some(JUMP | JUMPI)) {
             constants.insert(U256::from_be_slice(&code[pc + 1..pc + 1 + n]));
         }
         pc += 1 + n;
@@ -609,12 +611,13 @@ mod tests {
 
     #[test]
     fn metadata_stripping_and_scan() {
-        // PUSH2 0x1234 JUMPI STOP + fake CBOR (a1 ...) of length 3.
-        let code = [0x61, 0x12, 0x34, 0x57, 0x00, 0xa1, 0x57, 0x57, 0x00, 0x03];
-        assert_eq!(strip_metadata(&code), &code[..5]);
+        // PUSH2 0x1234 JUMPI PUSH2 0xbeef STOP + fake CBOR (a1 ...) of length 3.
+        let code = [0x61, 0x12, 0x34, 0x57, 0x61, 0xbe, 0xef, 0x00, 0xa1, 0x57, 0x57, 0x00, 0x03];
+        assert_eq!(strip_metadata(&code), &code[..8]);
         let mut consts = FxHashSet::default();
         assert_eq!(scan_code(&code, &mut consts), 1);
-        assert!(consts.contains(&U256::from_u64(0x1234)));
+        assert!(!consts.contains(&U256::from_u64(0x1234)), "jump targets are not constants");
+        assert!(consts.contains(&U256::from_u64(0xbeef)));
         assert_eq!(strip_metadata(&[0x00]), &[0x00]);
         assert_eq!(strip_metadata(&[0x57, 0x00, 0x01]), &[0x57, 0x00, 0x01]);
     }

@@ -7,18 +7,26 @@
 //! whose bit-length is itself uniform (so small numbers are as likely as
 //! huge ones). Address parameters only ever receive members of the campaign's
 //! address pool, which keeps `sum(a in accounts, ...)` invariants sound.
+//!
+//! On top of that, *input-to-state* hints (the idea behind Redqueen) are
+//! targeted: when a comparison had one operand equal to an argument of the
+//! call, the other operand (and its neighbours) becomes a candidate for that
+//! specific argument of that specific function.
 
 use super::campaign::Campaign;
 use super::sequence::{Call, Sequence, DEFAULT_WARP};
 use crate::abi::{sign_extend, width_mask, AbiType, AbiValue};
-use crate::fxhash::FxHashSet;
+use crate::fxhash::{FxHashMap, FxHashSet};
 use crate::rng::Rng;
 use crate::types::Address;
 use crate::u256::U256;
 
-/// Bounded set of values worth trying again.
+/// Values worth trying again: a pinned part (bytecode constants, never
+/// evicted) and a bounded runtime part (comparison operands, ring-replaced
+/// when full so it tracks recent behaviour).
 #[derive(Debug, Clone, Default)]
 pub struct Dictionary {
+    pinned: Vec<U256>,
     values: Vec<U256>,
     seen: FxHashSet<U256>,
     cap: usize,
@@ -26,12 +34,21 @@ pub struct Dictionary {
 }
 
 impl Dictionary {
-    /// An empty dictionary holding at most `cap` values (ring replacement when full).
+    /// An empty dictionary keeping at most `cap` runtime values.
     pub fn new(cap: usize) -> Self {
-        Dictionary { values: Vec::new(), seen: FxHashSet::default(), cap: cap.max(1), next: 0 }
+        Dictionary { pinned: Vec::new(), values: Vec::new(), seen: FxHashSet::default(), cap: cap.max(1), next: 0 }
     }
 
-    /// Adds a value; returns true if it was new.
+    /// Adds a value that is never evicted; returns true if it was new.
+    pub fn pin(&mut self, v: U256) -> bool {
+        if !self.seen.insert(v) {
+            return false;
+        }
+        self.pinned.push(v);
+        true
+    }
+
+    /// Adds a runtime value; returns true if it was new.
     pub fn insert(&mut self, v: U256) -> bool {
         if !self.seen.insert(v) {
             return false;
@@ -46,19 +63,24 @@ impl Dictionary {
         true
     }
 
-    /// Number of values.
+    /// Number of values (pinned plus runtime).
     pub fn len(&self) -> usize {
-        self.values.len()
+        self.pinned.len() + self.values.len()
     }
 
     /// True when empty.
     pub fn is_empty(&self) -> bool {
-        self.values.is_empty()
+        self.len() == 0
     }
 
-    /// A random value, if any.
+    /// A random value, if any: pinned and runtime parts are equally likely.
     pub fn pick(&self, rng: &mut Rng) -> Option<U256> {
-        (!self.values.is_empty()).then(|| *rng.pick(&self.values))
+        match (self.pinned.is_empty(), self.values.is_empty()) {
+            (true, true) => None,
+            (false, true) => Some(*rng.pick(&self.pinned)),
+            (true, false) => Some(*rng.pick(&self.values)),
+            (false, false) => Some(if rng.chance(1, 2) { *rng.pick(&self.pinned) } else { *rng.pick(&self.values) }),
+        }
     }
 }
 
@@ -72,6 +94,24 @@ pub struct Generator<'c> {
     pub dict: Dictionary,
     use_dict: bool,
     max_len: usize,
+    /// Per target: calldata head word index -> argument index (single-word static args only).
+    word_to_arg: Vec<Vec<Option<usize>>>,
+    /// Input-to-state candidates per (target, argument).
+    i2s: FxHashMap<(usize, usize), Vec<U256>>,
+}
+
+/// Maximum input-to-state candidates kept per argument.
+const I2S_CAP: usize = 64;
+
+fn single_word(ty: &AbiType) -> bool {
+    matches!(ty, AbiType::Uint(_) | AbiType::Int(_) | AbiType::Address | AbiType::Bool | AbiType::FixedBytes(_))
+}
+
+fn head_words(ty: &AbiType) -> usize {
+    match ty {
+        AbiType::FixedArray(e, k) if !e.is_dynamic() => head_words(e) * k,
+        _ => 1,
+    }
 }
 
 const WARPS: [u64; 6] = [0, 1, 60, 3600, 86_400, 604_800];
@@ -79,20 +119,94 @@ const WARPS: [u64; 6] = [0, 1, 60, 3600, 86_400, 604_800];
 impl<'c> Generator<'c> {
     /// A generator for `campaign`.
     pub fn new(campaign: &'c Campaign, seed: u64, use_dict: bool, max_len: usize) -> Self {
-        let mut dict = Dictionary::new(4096);
+        let mut dict = Dictionary::new(1024);
         if use_dict {
             for v in &campaign.constants {
-                dict.insert(*v);
+                dict.pin(*v);
             }
         }
-        Generator { campaign, pool: campaign.names.pool(), rng: Rng::new(seed), dict, use_dict, max_len: max_len.max(1) }
+        let word_to_arg = campaign
+            .targets
+            .iter()
+            .map(|t| {
+                let mut map = Vec::new();
+                for (a, ty) in t.func.inputs.iter().enumerate() {
+                    if single_word(ty) {
+                        map.push(Some(a));
+                    } else {
+                        map.extend(std::iter::repeat(None).take(head_words(ty)));
+                    }
+                }
+                map
+            })
+            .collect();
+        Generator {
+            campaign,
+            pool: campaign.names.pool(),
+            rng: Rng::new(seed),
+            dict,
+            use_dict,
+            max_len: max_len.max(1),
+            word_to_arg,
+            i2s: FxHashMap::default(),
+        }
     }
 
-    /// Feeds runtime comparison operands into the dictionary.
+    /// Records input-to-state hints `(target, calldata word, value)` from the executor.
+    pub fn learn_i2s(&mut self, hints: impl IntoIterator<Item = (usize, usize, U256)>) {
+        if !self.use_dict {
+            return;
+        }
+        for (t, w, v) in hints {
+            let Some(Some(arg)) = self.word_to_arg.get(t).and_then(|m| m.get(w)) else { continue };
+            let ty = &self.campaign.targets[t].func.inputs[*arg];
+            if !matches!(ty, AbiType::Uint(_) | AbiType::Int(_)) {
+                continue;
+            }
+            let list = self.i2s.entry((t, *arg)).or_default();
+            for cand in [v, v.wrapping_add(U256::ONE), v.wrapping_sub(U256::ONE)] {
+                if list.len() < I2S_CAP && !list.contains(&cand) {
+                    list.push(cand);
+                }
+            }
+        }
+    }
+
+    /// An input-to-state candidate for argument `arg` of `target` that fits its type.
+    fn i2s_value(&mut self, target: usize, arg: usize) -> Option<AbiValue> {
+        let list = self.i2s.get(&(target, arg))?;
+        let v = *self.rng.pick(list);
+        match self.campaign.targets[target].func.inputs[arg] {
+            AbiType::Uint(bits) => (v <= width_mask(bits)).then_some(AbiValue::Uint(v)),
+            AbiType::Int(bits) => {
+                let x = sign_extend(v & width_mask(bits), bits);
+                (x == v).then_some(AbiValue::Int(x))
+            }
+            _ => None,
+        }
+    }
+
+    /// A value for argument `arg` of `target`: an input-to-state candidate a
+    /// third of the time when one exists, otherwise a generic value.
+    fn arg_value(&mut self, target: usize, arg: usize) -> AbiValue {
+        if self.rng.chance(1, 3) {
+            if let Some(v) = self.i2s_value(target, arg) {
+                return v;
+            }
+        }
+        let ty = self.campaign.targets[target].func.inputs[arg].clone();
+        self.value(&ty)
+    }
+
+    /// Feeds runtime comparison operands into the dictionary, together with
+    /// their neighbours: `x > 1000` is satisfied by 1001, not by 1000.
     pub fn learn(&mut self, values: impl IntoIterator<Item = U256>) {
         if self.use_dict {
             for v in values {
-                self.dict.insert(v);
+                if self.dict.insert(v) {
+                    self.dict.insert(v.wrapping_add(U256::ONE));
+                    self.dict.insert(v.wrapping_sub(U256::ONE));
+                }
             }
         }
     }
@@ -102,7 +216,15 @@ impl<'c> Generator<'c> {
         let mask = width_mask(bits);
         let roll = self.rng.below(100);
         if self.use_dict && roll < 40 {
-            if let Some(mut v) = self.dict.pick(&mut self.rng) {
+            // Prefer dictionary entries that fit the parameter's width.
+            let mut picked = self.dict.pick(&mut self.rng);
+            for _ in 0..3 {
+                match picked {
+                    Some(v) if v > mask => picked = self.dict.pick(&mut self.rng),
+                    _ => break,
+                }
+            }
+            if let Some(mut v) = picked {
                 match self.rng.below(6) {
                     0 => v = v.wrapping_add(U256::ONE),
                     1 => v = v.wrapping_sub(U256::ONE),
@@ -208,7 +330,7 @@ impl<'c> Generator<'c> {
         let c = self.campaign;
         let target = self.rng.below(c.targets.len());
         let t = &c.targets[target];
-        let args = t.func.inputs.iter().map(|ty| self.value(ty)).collect();
+        let args = (0..t.func.inputs.len()).map(|a| self.arg_value(target, a)).collect();
         let value = if t.func.payable { self.eth_value() } else { U256::ZERO };
         let warp = if self.rng.chance(1, 10) { *self.rng.pick(&WARPS) } else { DEFAULT_WARP };
         Call { sender: self.rng.below(c.names.actors.len()), target, args, value, warp }
@@ -271,7 +393,11 @@ impl<'c> Generator<'c> {
                     } else {
                         let a = self.rng.below(t.func.inputs.len());
                         let ty = t.func.inputs[a].clone();
-                        self.mutate_value(&ty, &mut s[i].args[a]);
+                        let target = s[i].target;
+                        match self.rng.chance(1, 3).then(|| self.i2s_value(target, a)).flatten() {
+                            Some(v) => s[i].args[a] = v,
+                            None => self.mutate_value(&ty, &mut s[i].args[a]),
+                        }
                     }
                 }
                 3 => s[i].sender = self.rng.below(self.campaign.names.actors.len()),
@@ -336,5 +462,16 @@ mod tests {
         let mut rng = Rng::new(1);
         assert!(d.pick(&mut rng).is_some());
         assert!(Dictionary::new(0).pick(&mut rng).is_none());
+        // Pinned values survive any number of runtime insertions.
+        let mut p = Dictionary::new(1);
+        assert!(p.pin(U256::from_u64(42)));
+        assert!(!p.pin(U256::from_u64(42)));
+        assert!(p.pick(&mut rng) == Some(U256::from_u64(42)));
+        for i in 100..200 {
+            p.insert(U256::from_u64(i));
+        }
+        assert_eq!(p.len(), 2);
+        assert!((0..64).any(|_| p.pick(&mut rng) == Some(U256::from_u64(42))));
+        assert!((0..64).any(|_| p.pick(&mut rng) == Some(U256::from_u64(199))));
     }
 }

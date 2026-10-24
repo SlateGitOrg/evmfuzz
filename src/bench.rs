@@ -173,6 +173,7 @@ pub fn fuzzing(c: &Campaign, tx_budget: u64, reps: usize) -> Vec<FuzzBench> {
                     // Violations are ignored here: we only measure execution speed.
                     let out = exec.run(&seq, Checks::Active { invariants: flags, assertions: true }, true, false);
                     gen.learn(exec.cmp_values.drain(..));
+        gen.learn_i2s(exec.i2s.drain(..));
                     tx += out.executed as u64;
                     sequences += 1;
                 }

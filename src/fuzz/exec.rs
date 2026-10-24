@@ -141,6 +141,9 @@ pub struct Executor<'c> {
     pub tx_gas: u64,
     /// Comparison operands logged by feedback runs, drained by the engine.
     pub cmp_values: Vec<U256>,
+    /// Input-to-state hints `(target, calldata word, value)`: a comparison had
+    /// one operand equal to that argument word and `value` as the other.
+    pub i2s: Vec<(usize, usize, U256)>,
 }
 
 impl<'c> Executor<'c> {
@@ -151,6 +154,7 @@ impl<'c> Executor<'c> {
             evm: Evm::with_tracer(campaign.genesis.clone(), campaign.block.clone(), CoverageTracer::default()),
             tx_gas: DEPLOY_GAS,
             cmp_values: Vec::new(),
+            i2s: Vec::new(),
         }
     }
 
@@ -183,6 +187,15 @@ impl<'c> Executor<'c> {
                 // fuzzer's inputs echoed back, not constants worth learning; drop them.
                 let words: Vec<U256> = tx.data[4..].chunks(32).map(U256::from_be_slice).collect();
                 let log = self.evm.tracer.take_cmp_log();
+                for pair in log.chunks_exact(2) {
+                    for (w, word) in words.iter().enumerate() {
+                        if *word == pair[0] && pair[1] != pair[0] {
+                            self.i2s.push((call.target, w, pair[1]));
+                        } else if *word == pair[1] && pair[0] != pair[1] {
+                            self.i2s.push((call.target, w, pair[0]));
+                        }
+                    }
+                }
                 self.cmp_values.extend(log.into_iter().filter(|v| *v != call.value && !words.contains(v)));
             }
             let mut violation = None;
