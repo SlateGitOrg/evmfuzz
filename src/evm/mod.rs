@@ -235,6 +235,28 @@ impl<T: Tracer> Evm<T> {
         self.unsupported
     }
 
+    /// Executes a read-only `STATICCALL` from the zero address against the
+    /// current state and rolls every effect back (including warm-set
+    /// changes), as `eth_call` would. Used to evaluate invariants between
+    /// transactions; must not be called while a transaction is in flight.
+    pub fn view_call(&mut self, to: Address, input: Vec<u8>, gas: u64) -> FrameResult {
+        let cp = self.state.checkpoint();
+        self.state.warm_account(to);
+        let r = self.call_message(&CallMessage {
+            kind: CallKind::StaticCall,
+            caller: Address::ZERO,
+            target: to,
+            code_address: to,
+            value: U256::ZERO,
+            input,
+            gas,
+            is_static: true,
+            depth: 0,
+        });
+        self.state.revert_to(cp);
+        r
+    }
+
     fn analysis_for(&mut self, code: &[u8], hash: B256) -> Rc<Analysis> {
         if let Some(a) = self.analysis_cache.get(&hash) {
             return a.clone();

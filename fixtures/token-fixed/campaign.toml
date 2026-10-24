@@ -1,0 +1,19 @@
+name = "token-fixed"
+description = "Bug-free control: same API and invariants as fixtures/token; nothing should break"
+
+[actors]
+count = 3
+
+[[contracts]]
+name = "Token"
+bytecode = "Token.bin"
+abi = "Token.abi.json"
+args = ["1000000"]
+
+[[invariants]]
+name = "supply-conservation"
+expr = "Token.totalSupply() == sum(a in accounts, Token.balanceOf(a))"
+
+[[invariants]]
+name = "no-balance-above-supply"
+expr = "all(a in accounts, Token.balanceOf(a) <= Token.totalSupply())"

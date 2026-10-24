@@ -1,0 +1,19 @@
+name = "vault"
+description = "Ether vault drained through a 64-bit magic-code backdoor"
+
+[actors]
+count = 3
+balance = "100 ether"
+
+[[contracts]]
+name = "Vault"
+bytecode = "Vault.bin"
+abi = "Vault.abi.json"
+
+[[invariants]]
+name = "solvency"
+expr = "balance(Vault) >= Vault.totalDeposits()"
+
+[[invariants]]
+name = "deposits-add-up"
+expr = "Vault.totalDeposits() == sum(a in accounts, Vault.deposits(a))"

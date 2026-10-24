@@ -1,0 +1,31 @@
+name = "amm"
+description = "Constant-product pool over two tokens it deploys; removeLiquidity desyncs reserveB"
+
+[actors]
+count = 2
+
+[[contracts]]
+name = "Pool"
+bytecode = "Pool.bin"
+abi = "Pool.abi.json"
+
+# The pool creates its tokens in its constructor; name them for invariants.
+[[aliases]]
+name = "TokenA"
+expr = "Pool.tokenA()"
+
+[[aliases]]
+name = "TokenB"
+expr = "Pool.tokenB()"
+
+[[invariants]]
+name = "reserve-a-backed"
+expr = "Pool.reserveA() == TokenA.balanceOf(Pool)"
+
+[[invariants]]
+name = "reserve-b-backed"
+expr = "Pool.reserveB() == TokenB.balanceOf(Pool)"
+
+[[invariants]]
+name = "shares-add-up"
+expr = "Pool.totalShares() == sum(a in accounts, Pool.shares(a))"

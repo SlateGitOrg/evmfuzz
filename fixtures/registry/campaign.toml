@@ -1,0 +1,10 @@
+name = "registry"
+description = "Packed record codec that drops the top bit; caught by the assertion oracle"
+
+[[contracts]]
+name = "Registry"
+bytecode = "Registry.bin"
+abi = "Registry.abi.json"
+
+[fuzz]
+assertions = true

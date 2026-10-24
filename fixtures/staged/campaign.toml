@@ -1,0 +1,11 @@
+name = "staged"
+description = "Four-stage unlock; the final stage pays out more than once"
+
+[[contracts]]
+name = "Staged"
+bytecode = "Staged.bin"
+abi = "Staged.abi.json"
+
+[[invariants]]
+name = "payout-capped"
+expr = "Staged.paidOut() <= Staged.cap()"

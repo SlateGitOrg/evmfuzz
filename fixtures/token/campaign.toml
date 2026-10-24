@@ -1,0 +1,19 @@
+name = "token"
+description = "ERC-20 whose transfer() mints when sender == recipient"
+
+[actors]
+count = 3
+
+[[contracts]]
+name = "Token"
+bytecode = "Token.bin"
+abi = "Token.abi.json"
+args = ["1000000"]
+
+[[invariants]]
+name = "supply-conservation"
+expr = "Token.totalSupply() == sum(a in accounts, Token.balanceOf(a))"
+
+[[invariants]]
+name = "no-balance-above-supply"
+expr = "all(a in accounts, Token.balanceOf(a) <= Token.totalSupply())"
