@@ -15,12 +15,12 @@
 
 #![warn(missing_docs)]
 
-//ABI
+pub mod abi;
 pub mod crypto;
 pub mod evm;
-//FUZZ
 pub mod fxhash;
 pub mod rlp;
+pub mod rng;
 pub mod statetest;
 pub mod trie;
 pub mod types;

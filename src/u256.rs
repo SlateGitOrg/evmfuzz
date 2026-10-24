@@ -287,6 +287,14 @@ impl U256 {
         (U256([full[0], full[1], full[2], full[3]]), overflow)
     }
 
+    /// Multiplication returning `None` on overflow.
+    pub fn checked_mul(self, rhs: U256) -> Option<U256> {
+        match self.overflowing_mul(rhs) {
+            (v, false) => Some(v),
+            _ => None,
+        }
+    }
+
     /// Wrapping multiplication modulo 2^256.
     #[inline]
     pub fn wrapping_mul(self, rhs: U256) -> U256 {
