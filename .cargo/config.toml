@@ -1,0 +1,5 @@
+# Resolve dependency updates against the declared `rust-version` (1.82) so a
+# plain `cargo update` never locks a crate the MSRV toolchain cannot build.
+# Honoured by Cargo 1.84+; Cargo 1.82 ignores it with a warning.
+[resolver]
+incompatible-rust-versions = "fallback"
